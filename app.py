@@ -1,7 +1,7 @@
 import os
 
 from dotenv import load_dotenv
-from flask import Flask
+from flask import Flask, jsonify, request, render_template
 from flask_sqlalchemy import SQLAlchemy
 
 
@@ -15,12 +15,11 @@ db = SQLAlchemy(app)
 
 from users.models import *
 from users import controllers
-from flask import jsonify, request
 
 
 @app.route('/')
 def hello():
-    return 'Hello World'
+    return render_template('index.html')
 
 
 @app.route('/register', methods=['POST'])
