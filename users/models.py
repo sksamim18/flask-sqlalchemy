@@ -54,13 +54,13 @@ class Doctor(db.Model):
             self.address, self.qualification)
 
 
-class Pharmacst(db.Model):
+class Pharmacist(db.Model):
 
     __tablename__ = 'pharmacist'
     id = db.Column(db.Integer, primary_key=True)
     shop_name = db.Column(db.String(100))
-    cerification = db.Column(db.String(100))
-    work_ex = db.Column(db.Integer)
+    cerification = db.Column(db.String(100), nullable=False)
+    work_ex = db.Column(db.Integer, nullable=False)
     opening_time = db.Column(db.String)
     closing_time = db.Column(db.String)
     address = db.Column(db.String)
@@ -81,3 +81,15 @@ class Patient(db.Model):
 
     def __str__(self):
         return 'Dob: {} gender: {}'.format(self.dob, self.gender)
+
+
+class AuthToken(db.Model):
+    __tablename__ = 'auth_token'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer)
+    token = db.Column(db.String)
+    user_type = db.Column(db.String)
+    __table_args__ = (db.UniqueConstraint(user_id, user_type),)
+
+    def __str__(self):
+        return 'UserID: {}, Token: {}'.format(self.user_id, self.token)
