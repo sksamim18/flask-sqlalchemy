@@ -5,9 +5,11 @@ class Prescription(db.Model):
 
     __tablename__ = 'prescription'
     id = db.Column(db.Integer, primary_key=True)
-    doctor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    doctor_id = db.Column(db.Integer, db.ForeignKey(
+        'users.id'), nullable=False)
     doctor = db.relationship('User', foreign_keys=[doctor_id])
-    patient_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    patient_id = db.Column(db.Integer, db.ForeignKey(
+        'users.id'), nullable=False)
     patient = db.relationship('User', foreign_keys=[patient_id])
     timestamp = db.Column(db.DateTime)
 
@@ -43,3 +45,32 @@ class Treatment(db.Model):
     def __str__(self):
         return 'PrescriptionID: {} Medication {}'.format(
             self.prescription_id, self.medication)
+
+
+class Medicine(db.Model):
+
+    __tablename__ = 'medicine'
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String, nullable=False)
+    details = db.Column(db.String, nullable=False)
+
+    def __str__(self):
+        return 'Title: {}, Details: {}'.format(self.title, self.details)
+
+
+class AvailableMedicine(db.Model):
+
+    __tablename__ = 'available_medicine'
+    id = db.Column(db.Integer, primary_key=True)
+    pharmacist_id = db.Column(db.Integer, db.ForeignKey(
+        'users.id'), nullable=False)
+    pharmacist = db.relationship(
+        'User', foreign_keys=[pharmacist_id])
+    medicine_id = db.Column(db.Integer, db.ForeignKey(
+        'medicine.id'), nullable=False)
+    medicine = db.relationship(
+        'Pharmacist', foreign_keys=[medicine_id])
+    in_stock = db.Column(db.Integer, nullable=False)
+
+    def __str__(self):
+        return 'Title {}, '

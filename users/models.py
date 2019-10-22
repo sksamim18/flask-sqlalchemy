@@ -84,9 +84,11 @@ class Patient(db.Model):
 
 
 class AuthToken(db.Model):
+
     __tablename__ = 'auth_token'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer)
+    user = db.relationship('User', foreign_keys=[user_id])
     token = db.Column(db.String)
     user_type = db.Column(db.String)
     __table_args__ = (db.UniqueConstraint(user_id, user_type),)

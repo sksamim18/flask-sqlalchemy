@@ -24,6 +24,43 @@ validation['LOGIN'] = {
     'password': str,
     'type': str
 }
+validation['UPDATE_USER_PATIENT'] = {
+    'dob': str,
+    'address': str,
+    'gender': str
+}
+validation['UPDATE_USER_DOCTOR'] = {
+    'nickname': str,
+    'qualification': str,
+    'work_ex': int,
+    'address': str,
+    'account_status': str
+}
+validation['UPDATE_USER_PHARMACY'] = {
+    'shop_name': str,
+    'cerification': str,
+    'work_ex': str,
+    'opening_time': str,
+    'closing_time': str,
+    'address': str,
+    'account_status': str,
+    'user_id': str
+}
+validation['UPDATE_MEDICINE'] = {
+    'medicine_id': int,
+    'in_stock': int
+}
+
+
+def validate_update_fields(data, field_type):
+    error_data = {}
+    for field, value in data.items():
+        required_type = validation.get(field)
+        if required_type:
+            if required_type != type(field):
+                error_data[field] = "Please pass a {} data type".format(
+                    required_type)
+    return error_data
 
 
 def validate_fields(data, field_type):

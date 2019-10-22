@@ -1,14 +1,13 @@
 import random
 import hashlib
+import uuid
 from users import models
 from utils import constants
 from utils import field_validation
 from sqlalchemy.exc import IntegrityError
 from app import db
 from utils import tools
-
-
-generate_random = lambda x: str(random.randint(0, 9))
+from dateutil import parser
 
 
 class RegisterAPI(tools.Request):
@@ -162,33 +161,36 @@ class LoginAPI(tools.Request):
 
     def login(self):
         data = {}
-        username = self.data.get('phone_number')
-        password = self.data.get('password')
         validation_error = field_validation.validate_fields(
             self.data, 'LOGIN')
         if validation_error:
             return validation_error, 400
+        username = self.data.get('phone_number')
+        password = self.data.get('password')
         password = hashlib.sha256(password.encode('utf-8')).hexdigest()
 
         try:
             user_instance = models.User.query.filter_by(
                 username=username).first()
+
             user_mapping_instance = models.UserMapping.query.filter_by(
                 user_id=user_instance.id,
                 entity_type=self.login_type).first()
+
             if not user_mapping_instance:
                 return {'error': 'User not found'}, 400
         except:
             return {'error': 'User not found'}, 400
 
-        user_info = self.serilize(user_instance)
         if password != user_instance.password:
             return constants.LOGIN_ERROR, 400
-        user_mapping = models.UserMapping.query.filter_by(
+
+        user_info = self.serilize(user_instance)
+        user_mapping_instance = models.UserMapping.query.filter_by(
             user_id=user_instance.id, entity_type=self.login_type).first()
-        entity_instance = self.get_entity_instance(user_mapping.entity_id)
+        entity_instance = self.get_entity_instance(user_mapping_instance.entity_id)
         user_details = self.serilize(entity_instance)
-        token = ''.join(list(map(generate_random, range(32))))
+        token = str(uuid.uuid4()).replace('-', '')
         token_instance = self.get_token_instance(
             user_instance.id, token, self.login_type)
         db.session.add(token_instance)
@@ -207,7 +209,8 @@ class LoginAPI(tools.Request):
         else:
             token_instance = models.AuthToken(
                 user_id=user_id,
-                user_type=user_type
+                user_type=user_type,
+                token=token
             )
         db.session.add(token_instance)
         db.session.commit()
@@ -231,3 +234,162 @@ class LoginAPI(tools.Request):
 
     def __call__(self):
         return self.login_user()
+
+
+class EditUserAPI(tools.Request):
+
+    def __init__(self, request):
+        super().__init__(request)
+
+    def update_user_info(self):
+        username = self.data.get('phone_number')
+        user_instance = models.User.query.filter_by(username=username).first()
+        full_name = self.get_full_name()
+        for field, value in full_name.items():
+            setattr(user_instance, field, value)
+        phone_number = self.data.get('phone_number')
+        if phone_number:
+            setattr(user_instance, 'username', phone_number)
+        db.session.commit()
+        return {'message': 'User updated'}, 200
+
+    def get_full_name(self):
+        data = {}
+        full_name = self.data.get('full_name').split(' ')
+        if len(full_name) >= 1:
+            data['first_name'] = full_name[0]
+        if len(full_name) == 3:
+            data['middle_name'] = full_name[1]
+        if len(full_name) >= 2:
+            data['last_name'] = full_name[-1]
+        return data
+
+    def __call__(self):
+        return self.update_user_info()
+
+
+class EditUserInfoAPI(tools.Request):
+
+    def __init__(self, request):
+        super().__init__(request)
+        self.user_type = self.data.get('user_type').title()
+
+    def update_user_details_info(self):
+        import pdb; pdb.set_trace()
+        if self.user_type == 'Patient':
+            response, status = self.update_patient()
+        elif self.user_type == 'Doctor':
+            response, status = self.update_doctor()
+        elif self.user_type == 'Pharmacy':
+            response, status = self.update_pharmacy()
+        return response, status
+
+    def update_patient(self):
+        import pdb; pdb.set_trace()
+        data = {}
+        dob = self.data.get('dob')
+        address = self.data.get('address')
+        gender = self.data.get('gender').upper()
+
+        entity_instance = self.get_entity_instance()
+        if not entity_instance:
+            return {'error': 'User does not exist'}, 400
+
+        validation_error = field_validation.validate_update_fields(
+            self.data, 'UPDATE_USER_PATIENT')
+        if validation_error:
+            return validation_error, 400
+        if dob:
+            data['dob'] = parser.parse(dob)
+        if address:
+            data['address'] = address
+        if gender:
+            data['gender'] = gender
+        for field, value in data.items():
+            setattr(entity_instance, field, value)
+        db.session.commit()
+        return {'message': "User successfully updated."}, 200
+
+    def update_doctor(self):
+        data = {}
+        nickname = self.data.get('nickname')
+        qualification = self.data.get('qualification')
+        work_ex = self.data.get('work_ex')
+        address = self.data.get('address')
+        account_status = self.data.get('account_status')
+        entity_instance = self.get_entity_instance()
+
+        validation_error = field_validation.validate_update_fields(
+            self.data, 'UPDATE_USER_DOCTOR')
+
+        if validation_error:
+            return validation_error, 400
+        if not entity_instance:
+            return {'error': 'User does not exist'}, 400
+
+        if nickname:
+            data['nickname'] = nickname
+        if qualification:
+            data['qualification'] = qualification
+        if work_ex:
+            data['work_ex'] = work_ex
+        if address:
+            data['address'] = address
+        if account_status and account_status in ['active', 'deactive']:
+            data['account_status'] = account_status
+
+        for field, value in data.items():
+            setattr(entity_instance, field, value)
+        db.session.commit()
+        return {'message': "User successfully updated."}, 200
+
+    def update_pharmacy(self):
+        data = {}
+        shop_name = self.data.get('shop_name')
+        cerification = self.data.get('cerification')
+        work_ex = self.data.get('work_ex')
+        opening_time = self.data.get('opening_time')
+        closing_time = self.data.get('closing_time')
+        address = self.data.get('address')
+        account_status = self.data.get('account_status')
+        entity_instance = self.get_entity_instance()
+        validation_error = field_validation.validate_update_fields(
+            self.data, 'UPDATE_USER_PHARMACY')
+
+        if validation_error:
+            return validation_error, 400
+        if not entity_instance:
+            return {'error': 'User does not exist'}, 400
+
+        if shop_name:
+            data['shop_name'] = shop_name
+        if cerification:
+            data['cerification'] = cerification
+        if work_ex:
+            data['work_ex'] = work_ex
+        if opening_time:
+            data['opening_time'] = opening_time
+        if closing_time:
+            data['closing_time'] = closing_time
+        if address:
+            data['address'] = address
+        if account_status and isinstance(account_status, str):
+            data['account_status'] = account_status
+
+        for field, value in data.items():
+            setattr(entity_instance, field, value)
+        db.session.commit()
+        return {'message': "User successfully updated."}, 200
+
+    def get_entity_instance(self):
+        try:
+            user_map_instance = models.UserMapping.query.filter_by(
+                id=self.data.get('user_id')).first()
+            entity_instance = getattr(models, self.user_type).query.filter_by(
+                id=user_map_instance.entity_id).first()
+        except Exception:
+            return
+        return entity_instance
+
+    def __call__(self):
+        self.update_user_details_info()
