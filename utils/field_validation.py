@@ -50,6 +50,19 @@ validation['UPDATE_MEDICINE'] = {
     'medicine_id': int,
     'in_stock': int
 }
+validation['PATIENT_INFO'] = {
+    'patient_name': str,
+    'phone_number': str,
+    'dob': int,
+    'patient_gender': str,
+    'timestamp': str
+}
+validation['TREATMENT'] = {
+    'treatment': str
+}
+validation['DIAGNOSIS'] = {
+    'diagnosis': str
+}
 
 
 def validate_update_fields(data, field_type):

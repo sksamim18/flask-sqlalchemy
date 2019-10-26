@@ -51,45 +51,59 @@ def edit_user_info():
     return jsonify(response), status
 
 
-@app.route('/get-patient-info')
+@app.route('/get-patient-info', methods=['POST'])
 @tools.login_required_doctor
 def get_patient_list():
     response, status = GetPatientList(request)()
     return response, status
 
 
-@app.route('/get-all-medicine')
+@app.route('/get-all-medicine', methods=['POST'])
 @tools.login_required_pharmacist
 def get_all_medicine():
     response, status = GetAllMedicine(request)()
     return response, status
 
 
-@app.route('/update-medicine')
+@app.route('/update-medicine', methods=['POST'])
 @tools.login_required_pharmacist
 def update_medicine():
     response, status = UpdateMedicine(request)()
     return response, status
 
 
-@app.route('/remove-medicine')
+@app.route('/remove-medicine', methods=['POST'])
 @tools.login_required_pharmacist
 def remove_medicine():
     response, status = RemoveMedicine(request)()
     return response, status
 
 
-@app.route('/search-medicine')
+@app.route('/search-medicine', methods=['GET'])
 @tools.login_required_pharmacist
 def search_medicine():
     response, status = SearchMedicine(request)()
     return response, status
 
 
-@app.route('/add-medicine')
+@app.route('/add-medicine', methods=['POST'])
 @tools.login_required_pharmacist
 def add_medcine():
     response, status = AddMedcine(request)()
+    return response, status
+
+
+@app.route('/view-prescription', methods=['GET'])
+@tools.login_required
+def view_prescription():
+    response, status = ViewPrescription(request)()
+    return response, status
+
+
+@app.route('/write-prescription')
+@tools.login_required_doctor
+def write_prescription():
+    response, status = WritePrescription(request)()
     return response, status
 
 if __name__ == '__main__':

@@ -212,7 +212,7 @@ class LoginAPI(tools.Request):
                 user_type=user_type,
                 token=token
             )
-        db.session.add(token_instance)
+            db.session.add(token_instance)
         db.session.commit()
         return token_instance
 
@@ -224,10 +224,10 @@ class LoginAPI(tools.Request):
         elif self.login_type == 'Pharmacy':
             return models.Pharmacist.query.filter_by(id=id).first()
 
-    def serilize(self, user_instance):
+    def serilize(self, instance):
         data = {}
-        user_instance = user_instance.__dict__
-        for field, value in user_instance.items():
+        instance = user_instance.__dict__
+        for field, value in instance.items():
             if field not in ['_sa_instance_state', 'password']:
                 data[field] = value
         return data
@@ -255,7 +255,11 @@ class EditUserAPI(tools.Request):
 
     def get_full_name(self):
         data = {}
-        full_name = self.data.get('full_name').split(' ')
+        full_name = self.data.get('full_name')
+        if not full_name:
+            return {}
+        else:
+            full_name = full_name.split(' ')
         if len(full_name) >= 1:
             data['first_name'] = full_name[0]
         if len(full_name) == 3:

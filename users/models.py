@@ -1,4 +1,5 @@
 from app import db
+from datetime import datetime
 
 from sqlalchemy_utils import generic_relationship
 
@@ -17,6 +18,17 @@ class User(db.Model):
     @property
     def phone_number(self):
         return self.username
+
+    @property
+    def full_name(self):
+        full_name = str()
+        if self.first_name:
+            full_name += user_instance.first_name
+        if self.middle_name:
+            full_name += user_instance.middle_name
+        if self.last_name:
+            full_name += user_instance.last_name
+        return full_name
 
     def __str__(self):
         return 'UserID: {}, Phone number: {}'.format(
@@ -78,6 +90,13 @@ class Patient(db.Model):
     dob = db.Column(db.DateTime)
     address = db.Column(db.String)
     gender = db.Column(db.String, default='M')
+
+    @property
+    def age(self):
+        current_date = datetime.now()
+        dob = self.dob
+        age = int(((current_date - dob).days) / 365)
+        return age
 
     def __str__(self):
         return 'Dob: {} gender: {}'.format(self.dob, self.gender)

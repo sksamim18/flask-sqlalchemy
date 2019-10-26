@@ -16,7 +16,7 @@ class Request:
     @property
     def get_user_instance(self):
         token = self.headers.get('Authorization')
-        user_id = models.AuthToken.query.filter(
+        user_id = models.AuthToken.query.filter_by(
             token=token).first().user_id
         return user_id
 

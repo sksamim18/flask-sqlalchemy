@@ -1,5 +1,6 @@
 from collections import defaultdict
-from prescription import models
+from prescription.models import *
+from user.models import *
 from utils import tools
 from app import db
 
@@ -138,12 +139,12 @@ class RemoveMedicine(tools.Request):
         available_medicine_instance = models.AvailableMedicine(
             user_id=self.get_user_instance,
             medicine_id=medicine_instance)
-        available_medicine_instance.in_stock = (
-            available_medicine_instance.in_stock - sold_unit)
 
-        if available_medicine_instance < 0:
+        left_out_medicine = available_medicine_instance.in_stock - sold_unit
+        if left_out_medicine < 0:
             return {'error': 'Quantity unavailable'}, 400
-
+        available_medicine_instance.in_stock = left_out_medicine
+        db.session.commit()
         return {'message': 'Successfully updated'}, 200
 
     def __call__(self):
@@ -158,18 +159,14 @@ class SearchMedicine(tools.Request):
     def search_medicine(self):
         data, medicine_ids = [], []
         query = self.args.get('q')
-
         available_medicine_instance = models.AvailableMedicine(
             user_id=self.get_user_instance,
             medicine_id=medicine_instance)
-
         for medicine in available_medicine_instance:
             medicine_ids.append(medicine.prescription_id)
-
         medicine_instances = models.Diagnosis.query.filter(
             Medicine.id.in_(medicine_ids),
             Medicine.id.match(query))
-
         for medicine in medicine_instances:
             required_fields = {}
             required_fields['title'] = medicines.title
@@ -191,10 +188,154 @@ class AddMedicine(tools.Request):
         data['in_stock'] = self.data.get('in_stock')
         data['medicine_id'] = self.data.get('medicine_id')
         data['user_id'] = self.get_user_instance
-        available_medicine_instance = AvailableMedicine(**data)
+        available_medicine_instance = models.AvailableMedicine(**data)
         db.session.add(available_medicine_instance)
         db.session.commit()
         return {'message': 'Medicine updated successfully.'}, 201
 
     def __call__(self):
         return self.add_medicine()
+
+
+class ViewPrescription(tools.Request):
+
+    def __init__(self, request):
+        super().__init__(request)
+
+    def get_prescription(self):
+        data, diagnosis_list, treatment_list = {}, [], []
+        prescription_id = self.args.get('prescription_id')
+
+        prescription_instance = Prescription.query.filter_by(
+            id=prescription_id)
+        patient_user_instance = User.query.filter_by(
+            id=prescription_instance.patient_id)
+        patient_map_instance = UserMapping.query.filter_by(
+            user_id=patient_user_instance.id,
+            entity_type='Patient')
+        patient_instance = Patience.query.filter_by(
+            id=patient_map_instance.entity_id)
+        doctor_user_instance = User.query.filter_by(
+            id=prescription_instance.doctor_id)
+        doctors_map_instance = UserMapping.query.filter_by(
+            id=doctor_user_instance.id,
+            entity_type='Doctor')
+        doctor_instance = Doctor.query.filter_by(
+            id=patient_user_map_instance.entity_id)
+        diagnosis_instances = Diagnosis.query.filter_by(
+            prescription_id=prescription_id)
+        treatment_instances = Treatment.query.filter_by(
+            prescription_id=prescription_id)
+        for diagnosis in diagnosis_instances:
+            diagnosis_list.append({
+                'id': diagnosis.id,
+                'cause': diagnosis.cause
+            })
+        for treatment in treatment_instances:
+            treatment_list.append({
+                'id': treatment.id,
+                'medication': treatment.medication
+            })
+
+        data['diagnosis'] = diagnosis_list
+        data['treatment'] = treatment_list
+        data['patient'] = {
+            'full_name': patient_user_instance.full_name,
+            'patientID': patient_user_instance.phone_number,
+            'patient_age': patient_instance.age,
+            'patient_gender': patient_instance.gender
+        }
+        data['doctor'] = {
+            'full_name': doctor_user_instance.full_name,
+            'doctorID': doctor_user_instance.phone_number,
+            'qualification': doctor_instance.qualification
+        }
+        return data, 200
+
+    def __call__(self):
+        return self.get_prescription()
+
+
+class WritePrescription(tools.Request):
+
+    def __init__(self, request):
+        super().__init__(request)
+        self.patient_instance = None
+
+    def write_prescription(self):
+        data = {}
+        doctor_instance = self.get_user_instance
+        data['doctor_id'] = doctor_instance.id
+        if self.data.get('patient_data'):
+            assert_error = self.create_patient_instance():
+            if assert_error:
+                return assert_error, 400
+        data['patient_id'] = self.data.get('patient_id')
+        data['timestamp'] = datetime.now()
+        prescription_instance = Prescription(**data)
+        db.session.add(prescription_instance)
+        db.session.commit()
+        treatment_list = self.data.get('treatment')
+        for treatment in treatment_list:
+            validation_error = field_validation.validate_fields(treatment, 'TREATMENT')
+            if validation_error:
+                return validation_error, 400
+            treatment_data = {}
+            treatment_data['prescription_id'] = prescription_instance.id
+            treatment_data['cause'] = treatment.get('cause')
+            treatment_instance = Treatment(**treatment_data)
+            db.session.add(treatment_instance)
+        diagnosis_list = self.data.get('diagnosis')
+        for diagnosis in diagnosis_list:
+            validation_error = field_validation.validate_fields(diagnosis, 'DIAGNOSIS')
+            if validation_error:
+                return validation_error, 400
+            diagnosis_data = {}
+            diagnosis_data['prescription_id'] = prescription_instance.id
+            diagnosis_data['diagnosis'] = diagnosis.get('diagnosis')
+            diagnosis_instance = Diagnosis(**diagnosis_data)
+            db.session.add(diagnosis_instance)
+        db.session.commit()
+        return {'message': 'Prescription created successfully.'}, 400
+
+    def create_patient_instance(self):
+        data = {}
+        user_data, user_mapping_data, patient_data = {}, {}, {}
+        patient_data = self.data.get('patient_data')
+        validation_error = field_validation.validate_fields(
+            patient_data, 'PATIENT_INFO')
+        if validation_error:
+            return validation_error
+        user_data['username'] = patient_data.get('phone_number')
+        full_name = patient_data.get('patient_name')
+        user_data.update(self.parse_full_name(full_name))
+        user_data['password'] = hashlib.sha256(patient_data.get(
+            'phone_number').encode('utf-8')).hexdigest()
+        user_instance = User(**user_data)
+        patient_data['dob'] = parser.parse(patient_data.get('patient_age'))
+        patient_data['gender'] = patient_data.get('patient_gender')
+        patient_data['address'] = patient_data.get('address', str())
+        patient_instance = Patient(**patient_data)
+        db.session.add(patient_instance)
+        db.session.commit()
+        data['user_id'] = user_instance.id
+        data['entity_id'] = patient_instance.id
+        data['entity_type'] = 'Patient'
+        UserMapping(**data)
+        self.patient_instance = user_instance
+
+    def parse_full_name(self, full_name)
+        data = {}
+        if not full_name:
+            return data
+        full_name = full_name.split(' ')
+        if len(full_name) >= 1:
+            data['first_name'] = full_name[0]
+        if len(full_name) == 3:
+            data['middle_name'] = full_name[1]
+        if len(full_name) >= 2:
+            data['last_name'] = full_name[-1]
+        return data
+
+    def __call__(self):
+        return self.write_prescription()
