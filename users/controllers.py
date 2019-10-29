@@ -14,7 +14,11 @@ class RegisterAPI(tools.Request):
 
     def __init__(self, request):
         super().__init__(request)
-        self.type = self.data.get('type').title()
+        user_type = self.data.get('type')
+        if isinstance(user_type, str):
+            self.type = self.data.get('type').title()
+        else:
+            self.type = None
 
     def create_user(self):
         status = 400
@@ -34,7 +38,6 @@ class RegisterAPI(tools.Request):
             self.data, 'PATIENT_REGISTRATION')
         if validation_error:
             return validation_error, 400
-
         user_instance = self.get_or_create_user()
         patient_instance = models.Patient(address="")
         db.session.add(patient_instance)
@@ -149,7 +152,11 @@ class LoginAPI(tools.Request):
 
     def __init__(self, request):
         super().__init__(request)
-        self.login_type = self.data.get('type', str()).title()
+        login_type = self.data.get('type', str)
+        if isinstance(login_type, str):
+            self.login_type = login_type.title()
+        else:
+            self.login_type = None
 
     def login_user(self):
         type_error = constants.LOGIN_TYPE_ERROR
@@ -226,7 +233,7 @@ class LoginAPI(tools.Request):
 
     def serilize(self, instance):
         data = {}
-        instance = user_instance.__dict__
+        instance = instance.__dict__
         for field, value in instance.items():
             if field not in ['_sa_instance_state', 'password']:
                 data[field] = value
@@ -243,13 +250,17 @@ class EditUserAPI(tools.Request):
 
     def update_user_info(self):
         username = self.data.get('phone_number')
+        if not username:
+            return {'error': 'Please pass phone number'}, 400
         user_instance = models.User.query.filter_by(username=username).first()
         full_name = self.get_full_name()
         for field, value in full_name.items():
             setattr(user_instance, field, value)
-        phone_number = self.data.get('phone_number')
-        if phone_number:
-            setattr(user_instance, 'username', phone_number)
+        password = self.data.get('password')
+        if password:
+            hashed_password = hashlib.sha256(
+                password.encode('utf-8')).hexdigest()
+            setattr(user_instance, 'password', hashed_password)
         db.session.commit()
         return {'message': 'User updated'}, 200
 
@@ -276,7 +287,11 @@ class EditUserInfoAPI(tools.Request):
 
     def __init__(self, request):
         super().__init__(request)
-        self.user_type = self.data.get('user_type').title()
+        user_type = self.data.get('type')
+        if isinstance(user_type, str):
+            self.user_type = user_type.title()
+        else:
+            self.user_type = None
 
     def update_user_details_info(self):
         import pdb; pdb.set_trace()
@@ -284,12 +299,13 @@ class EditUserInfoAPI(tools.Request):
             response, status = self.update_patient()
         elif self.user_type == 'Doctor':
             response, status = self.update_doctor()
-        elif self.user_type == 'Pharmacy':
+        elif self.user_type == 'Pharmacist':
             response, status = self.update_pharmacy()
+        else:
+            response, status = constants.MISSING_TYPE_ERROR, 400
         return response, status
 
     def update_patient(self):
-        import pdb; pdb.set_trace()
         data = {}
         dob = self.data.get('dob')
         address = self.data.get('address')
@@ -348,6 +364,7 @@ class EditUserInfoAPI(tools.Request):
         return {'message': "User successfully updated."}, 200
 
     def update_pharmacy(self):
+        import pdb; pdb.set_trace()
         data = {}
         shop_name = self.data.get('shop_name')
         cerification = self.data.get('cerification')
@@ -386,9 +403,11 @@ class EditUserInfoAPI(tools.Request):
         return {'message': "User successfully updated."}, 200
 
     def get_entity_instance(self):
+        import pdb; pdb.set_trace()
         try:
             user_map_instance = models.UserMapping.query.filter_by(
-                id=self.data.get('user_id')).first()
+                user_id=self.get_user_instance,
+                entity_type=self.user_type).first()
             entity_instance = getattr(models, self.user_type).query.filter_by(
                 id=user_map_instance.entity_id).first()
         except Exception:
@@ -396,4 +415,4 @@ class EditUserInfoAPI(tools.Request):
         return entity_instance
 
     def __call__(self):
-        self.update_user_details_info()
+        return self.update_user_details_info()

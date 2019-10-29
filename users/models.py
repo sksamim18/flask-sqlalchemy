@@ -106,7 +106,7 @@ class AuthToken(db.Model):
 
     __tablename__ = 'auth_token'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     user = db.relationship('User', foreign_keys=[user_id])
     token = db.Column(db.String)
     user_type = db.Column(db.String)

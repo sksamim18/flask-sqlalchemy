@@ -1,6 +1,6 @@
 from collections import defaultdict
 from prescription.models import *
-from user.models import *
+from users.models import *
 from utils import tools
 from app import db
 
@@ -14,27 +14,21 @@ class GetPatientList(tools.Request):
         data_type = self.args.get('data_type')
         if data_type not in ['patient', 'prescription']:
             return {'error': 'Please pass in proper data type.'}
-
         data = {}
         patient_dict = {}
         diagnosis_dict = defaultdict(list)
-
         doctor_id = self.args.get('doctor_id')
         prescription_instances = models.Prescription.query.filter_by(
             doctor_id=doctor_id)
-
         for prescription in prescription_instances:
             diagnosis_ids.append(prescription.id)
             patient_ids.append(prescription.patient_id)
-
         diagnosis_instances = models.Diagnosis.query.filter(
             Diagnosis.id.in_([prescriptions_ids]))
         patient_instances = models.Patient.query.filter(
             Patient.id.in_([patient_ids]))
-
         for field in diagnosis_instances:
             diagnosis_dict[field.prescription_id].append(field.cause)
-
         for field in patient_instances:
             full_name = str()
             if field.first_name:
@@ -44,7 +38,6 @@ class GetPatientList(tools.Request):
             if field.last_name:
                 full_name += field.last_name
             patient_dict[field.id] = full_name
-
         for prescription in prescription_instances:
             fields = {}
             fields['patient_name'] = patient_dict.get(prescription.patient_id)
@@ -72,12 +65,10 @@ class GetAllMedicine(tools.Request):
         user_id = self.args.get('user_id')
         in_stock_medicines = models.AvailableMedicine.query.filter_by(
             pharmacist_id=user_id)
-
         for medicine in in_stock_medicines:
             medicine_ids.append(medicine.medicine_id)
         medicines = models.Medicine.query.filter(
             Medicine.id.in_([medicine_ids]))
-
         for medicine in medicines:
             if medicine.title[0].lower() != alphabet.lower():
                 continue
@@ -85,7 +76,6 @@ class GetAllMedicine(tools.Request):
             data['title'] = medicine.title
             data['details'] = medicine.details
             medicine_tracker[medicine.id] = data
-
         for medicine in in_stock_medicines:
             required_data = {}
             required_data['title'] = medicine_tracker.get(
@@ -109,7 +99,6 @@ class UpdateMedicine(tools.Request):
             self.data, 'UPDATE_MEDICINE')
         if validation_error:
             return validation_error, 400
-
         token = self.headers.get('Authorization')
         user_id = models.AuthToken.query.filter(
             token=token,
@@ -139,7 +128,6 @@ class RemoveMedicine(tools.Request):
         available_medicine_instance = models.AvailableMedicine(
             user_id=self.get_user_instance,
             medicine_id=medicine_instance)
-
         left_out_medicine = available_medicine_instance.in_stock - sold_unit
         if left_out_medicine < 0:
             return {'error': 'Quantity unavailable'}, 400
@@ -221,7 +209,7 @@ class ViewPrescription(tools.Request):
             id=doctor_user_instance.id,
             entity_type='Doctor')
         doctor_instance = Doctor.query.filter_by(
-            id=patient_user_map_instance.entity_id)
+            id=doctors_map_instance.entity_id)
         diagnosis_instances = Diagnosis.query.filter_by(
             prescription_id=prescription_id)
         treatment_instances = Treatment.query.filter_by(
@@ -236,7 +224,6 @@ class ViewPrescription(tools.Request):
                 'id': treatment.id,
                 'medication': treatment.medication
             })
-
         data['diagnosis'] = diagnosis_list
         data['treatment'] = treatment_list
         data['patient'] = {
@@ -267,17 +254,21 @@ class WritePrescription(tools.Request):
         doctor_instance = self.get_user_instance
         data['doctor_id'] = doctor_instance.id
         if self.data.get('patient_data'):
-            assert_error = self.create_patient_instance():
+            assert_error = self.create_patient_instance()
             if assert_error:
                 return assert_error, 400
-        data['patient_id'] = self.data.get('patient_id')
+        if self.data.get('patient_id'):
+            data['patient_id'] = self.data.get('patient_id')
+        else:
+            data['patient_id'] = self.patient_instance.id
         data['timestamp'] = datetime.now()
         prescription_instance = Prescription(**data)
         db.session.add(prescription_instance)
         db.session.commit()
         treatment_list = self.data.get('treatment')
         for treatment in treatment_list:
-            validation_error = field_validation.validate_fields(treatment, 'TREATMENT')
+            validation_error = field_validation.validate_fields(
+                treatment, 'TREATMENT')
             if validation_error:
                 return validation_error, 400
             treatment_data = {}
@@ -287,7 +278,8 @@ class WritePrescription(tools.Request):
             db.session.add(treatment_instance)
         diagnosis_list = self.data.get('diagnosis')
         for diagnosis in diagnosis_list:
-            validation_error = field_validation.validate_fields(diagnosis, 'DIAGNOSIS')
+            validation_error = field_validation.validate_fields(
+                diagnosis, 'DIAGNOSIS')
             if validation_error:
                 return validation_error, 400
             diagnosis_data = {}
@@ -324,7 +316,7 @@ class WritePrescription(tools.Request):
         UserMapping(**data)
         self.patient_instance = user_instance
 
-    def parse_full_name(self, full_name)
+    def parse_full_name(self, full_name):
         data = {}
         if not full_name:
             return data
@@ -339,3 +331,33 @@ class WritePrescription(tools.Request):
 
     def __call__(self):
         return self.write_prescription()
+
+
+class GetPatientInfo(tools.Request):
+
+    def __init__(self, request):
+        super().__init__(self)
+
+    def get_patient_info():
+        data = {}
+        username = self.args.get('user_id')
+        try:
+            user_instance = User.query.filter_by(username=username)
+            map_instance = UserMapping.query.filter_by(
+                user_id=user_instance.id,
+                entity_type='Patient')
+            patient_instance = Patient.query.filter_by(
+                id=map_instance.entity_id)
+        except Exception:
+            return {'error': 'User not found'}, 400
+        data['phone_number'] = user_instance.username
+        data['first_name'] = user_instance.first_name
+        data['middle_name'] = user_instance.middle_name
+        data['last_name'] = user_instance.last_name
+        data['age'] = patient_instance.age
+        data['address'] = patient_instance.address
+        data['gender'] = patient_instance.gender
+        return data, 200
+
+    def __call__():
+        return self.get_patient_info()

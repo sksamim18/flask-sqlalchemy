@@ -1,4 +1,5 @@
 from app import db
+from users.models import *
 
 
 class Prescription(db.Model):
@@ -69,7 +70,7 @@ class AvailableMedicine(db.Model):
     medicine_id = db.Column(db.Integer, db.ForeignKey(
         'medicine.id'), nullable=False)
     medicine = db.relationship(
-        'Pharmacist', foreign_keys=[medicine_id])
+        'Medicine', foreign_keys=[medicine_id])
     in_stock = db.Column(db.Integer, nullable=False)
 
     def __str__(self):
