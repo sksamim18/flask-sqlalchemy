@@ -1,13 +1,13 @@
 validation = {}
 
 validation['PATIENT_REGISTRATION'] = {
-    'type': str
+    'type': str,
     'full_name': str,
     'phone_number': str,
     'password': str
 }
 validation['PHARMACY_REGISTRATION'] = {
-    'type': str
+    'type': str,
     'full_name': str,
     'phone_number': str,
     'password': str,
@@ -15,7 +15,7 @@ validation['PHARMACY_REGISTRATION'] = {
     'work_ex': int
 }
 validation['DOCTOR_REGISTRATION'] = {
-    'type': str
+    'type': str,
     'full_name': str,
     'phone_number': str,
     'password': str,
@@ -33,7 +33,7 @@ validation['UPDATE_USER_PATIENT'] = {
     'gender': str
 }
 validation['UPDATE_USER_DOCTOR'] = {
-    'type': str
+    'type': str,
     'nickname': str,
     'qualification': str,
     'work_ex': int,
@@ -41,7 +41,7 @@ validation['UPDATE_USER_DOCTOR'] = {
     'account_status': str
 }
 validation['UPDATE_USER_PHARMACY'] = {
-    'type': str
+    'type': str,
     'shop_name': str,
     'cerification': str,
     'work_ex': str,
@@ -74,7 +74,7 @@ def validate_update_fields(data, field_type):
     error_data = {}
     validation_mapping = validation.get(field_type)
     for field, value in data.items():
-        required_type = validation_mapping(field)
+        required_type = validation_mapping.get(field)
         if required_type:
             if required_type != type(field):
                 error_data[field] = "Please pass a {} data type".format(

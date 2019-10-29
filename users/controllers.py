@@ -112,7 +112,7 @@ class RegisterAPI(tools.Request):
         user_instance = models.User.query.filter_by(
             username=phone_number).first()
         if user_instance:
-            return user_instanc
+            return user_instance
         data.update(self.get_full_name())
         data['username'] = phone_number
         data['password'] = hashlib.sha256(self.data.get(
@@ -176,7 +176,8 @@ class LoginAPI(tools.Request):
         if password != user_instance.password:
             return constants.LOGIN_ERROR, 400
         user_info = self.serilize(user_instance)
-        entity_instance = self.get_entity_instance(user_mapping_instance.entity_id)
+        entity_instance = self.get_entity_instance(
+            user_mapping_instance.entity_id)
         user_details = self.serilize(entity_instance)
         token = str(uuid.uuid4()).replace('-', '')
         token_instance = self.get_token_instance(
@@ -209,7 +210,7 @@ class LoginAPI(tools.Request):
             return models.Patient.query.filter_by(id=id).first()
         elif self.type == 'Doctor':
             return models.Doctor.query.filter_by(id=id).first()
-        elif self.type == 'Pharmacy':
+        elif self.type == 'Pharmacist':
             return models.Pharmacist.query.filter_by(id=id).first()
 
     def serilize(self, instance):
@@ -377,7 +378,7 @@ class EditUserInfoAPI(tools.Request):
             user_map_instance = models.UserMapping.query.filter_by(
                 user_id=self.get_user_instance,
                 entity_type=self.type).first()
-            entity_instance = getattr(models, self.user_type).query.filter_by(
+            entity_instance = getattr(models, self.type).query.filter_by(
                 id=user_map_instance.entity_id).first()
         except Exception:
             return
