@@ -21,16 +21,14 @@ class RegisterAPI(tools.Request):
             self.type = None
 
     def create_user(self):
-        status = 400
-        error = constants.REGISTRATION_ERROR
         if self.type == 'Patient':
             response, status = self.register_patient()
-        elif self.type == 'Pharmacy':
+        elif self.type == 'Pharmacist':
             response, status = self.register_pharmacy()
         elif self.type == 'Doctor':
             response, status = self.register_doctor()
         else:
-            return error, status
+            return constants.MISSING_TYPE_ERROR, 400
         return response, status
 
     def register_patient(self):
@@ -60,17 +58,14 @@ class RegisterAPI(tools.Request):
         data = {}
         validation_error = field_validation.validate_fields(
             self.data, 'PHARMACY_REGISTRATION')
-
         if validation_error:
             return validation_error, 400
-
         user_instance = self.get_or_create_user()
         data['work_ex'] = self.data.get('work_ex')
         data['cerification'] = self.data.get('cerification')
         pharmacist_instance = models.Pharmacist(**data)
         db.session.add(pharmacist_instance)
         db.session.commit()
-
         try:
             user_mapping_instance = models.UserMapping(
                 user_id=user_instance.id,
@@ -89,17 +84,14 @@ class RegisterAPI(tools.Request):
         data = {}
         validation_error = field_validation.validate_fields(
             self.data, 'DOCTOR_REGISTRATION')
-
         if validation_error:
             return validation_error, 400
-
         user_instance = self.get_or_create_user()
         data['work_ex'] = self.data.get('work_ex')
         data['qualification'] = self.data.get('qualification')
         doctor_instance = models.Doctor(**data)
         db.session.add(doctor_instance)
         db.session.commit()
-
         try:
             user_mapping_instance = models.UserMapping(
                 user_id=user_instance.id,
@@ -112,7 +104,6 @@ class RegisterAPI(tools.Request):
             db.session.delete(doctor_instance)
             db.session.commit()
             return {'error': 'User already exists'}, 400
-
         return {'message': 'User successfully created'}, 201
 
     def get_or_create_user(self):
@@ -120,10 +111,8 @@ class RegisterAPI(tools.Request):
         phone_number = self.data.get('phone_number')
         user_instance = models.User.query.filter_by(
             username=phone_number).first()
-
         if user_instance:
-            return user_instance
-
+            return user_instanc
         data.update(self.get_full_name())
         data['username'] = phone_number
         data['password'] = hashlib.sha256(self.data.get(
@@ -152,18 +141,17 @@ class LoginAPI(tools.Request):
 
     def __init__(self, request):
         super().__init__(request)
-        login_type = self.data.get('type', str)
-        if isinstance(login_type, str):
-            self.login_type = login_type.title()
+        user_type = self.data.get('type', str)
+        if isinstance(user_type, str):
+            self.type = user_type.title()
         else:
-            self.login_type = None
+            self.type = None
 
     def login_user(self):
-        type_error = constants.LOGIN_TYPE_ERROR
-        if self.login_type in ['Pharmacy', 'Doctor', 'Patient']:
+        if self.type in ['Pharmacist', 'Doctor', 'Patient']:
             response, status = self.login()
         else:
-            response, status = type_error, 400
+            response, status = constants.MISSING_TYPE_ERROR, 400
         return response, status
 
     def login(self):
@@ -175,31 +163,24 @@ class LoginAPI(tools.Request):
         username = self.data.get('phone_number')
         password = self.data.get('password')
         password = hashlib.sha256(password.encode('utf-8')).hexdigest()
-
         try:
             user_instance = models.User.query.filter_by(
                 username=username).first()
-
             user_mapping_instance = models.UserMapping.query.filter_by(
                 user_id=user_instance.id,
-                entity_type=self.login_type).first()
-
+                entity_type=self.type).first()
             if not user_mapping_instance:
                 return {'error': 'User not found'}, 400
         except:
             return {'error': 'User not found'}, 400
-
         if password != user_instance.password:
             return constants.LOGIN_ERROR, 400
-
         user_info = self.serilize(user_instance)
-        user_mapping_instance = models.UserMapping.query.filter_by(
-            user_id=user_instance.id, entity_type=self.login_type).first()
         entity_instance = self.get_entity_instance(user_mapping_instance.entity_id)
         user_details = self.serilize(entity_instance)
         token = str(uuid.uuid4()).replace('-', '')
         token_instance = self.get_token_instance(
-            user_instance.id, token, self.login_type)
+            user_instance.id, token, self.type)
         db.session.add(token_instance)
         db.session.commit()
         data['user_info'] = user_info
@@ -224,11 +205,11 @@ class LoginAPI(tools.Request):
         return token_instance
 
     def get_entity_instance(self, id):
-        if self.login_type == 'Patient':
+        if self.type == 'Patient':
             return models.Patient.query.filter_by(id=id).first()
-        elif self.login_type == 'Doctor':
+        elif self.type == 'Doctor':
             return models.Doctor.query.filter_by(id=id).first()
-        elif self.login_type == 'Pharmacy':
+        elif self.type == 'Pharmacy':
             return models.Pharmacist.query.filter_by(id=id).first()
 
     def serilize(self, instance):
@@ -289,17 +270,16 @@ class EditUserInfoAPI(tools.Request):
         super().__init__(request)
         user_type = self.data.get('type')
         if isinstance(user_type, str):
-            self.user_type = user_type.title()
+            self.type = user_type.title()
         else:
-            self.user_type = None
+            self.type = None
 
     def update_user_details_info(self):
-        import pdb; pdb.set_trace()
-        if self.user_type == 'Patient':
+        if self.type == 'Patient':
             response, status = self.update_patient()
-        elif self.user_type == 'Doctor':
+        elif self.type == 'Doctor':
             response, status = self.update_doctor()
-        elif self.user_type == 'Pharmacist':
+        elif self.type == 'Pharmacist':
             response, status = self.update_pharmacy()
         else:
             response, status = constants.MISSING_TYPE_ERROR, 400
@@ -310,11 +290,9 @@ class EditUserInfoAPI(tools.Request):
         dob = self.data.get('dob')
         address = self.data.get('address')
         gender = self.data.get('gender').upper()
-
         entity_instance = self.get_entity_instance()
         if not entity_instance:
             return {'error': 'User does not exist'}, 400
-
         validation_error = field_validation.validate_update_fields(
             self.data, 'UPDATE_USER_PATIENT')
         if validation_error:
@@ -338,15 +316,12 @@ class EditUserInfoAPI(tools.Request):
         address = self.data.get('address')
         account_status = self.data.get('account_status')
         entity_instance = self.get_entity_instance()
-
         validation_error = field_validation.validate_update_fields(
             self.data, 'UPDATE_USER_DOCTOR')
-
         if validation_error:
             return validation_error, 400
         if not entity_instance:
             return {'error': 'User does not exist'}, 400
-
         if nickname:
             data['nickname'] = nickname
         if qualification:
@@ -357,14 +332,12 @@ class EditUserInfoAPI(tools.Request):
             data['address'] = address
         if account_status and account_status in ['active', 'deactive']:
             data['account_status'] = account_status
-
         for field, value in data.items():
             setattr(entity_instance, field, value)
         db.session.commit()
         return {'message': "User successfully updated."}, 200
 
     def update_pharmacy(self):
-        import pdb; pdb.set_trace()
         data = {}
         shop_name = self.data.get('shop_name')
         cerification = self.data.get('cerification')
@@ -376,12 +349,10 @@ class EditUserInfoAPI(tools.Request):
         entity_instance = self.get_entity_instance()
         validation_error = field_validation.validate_update_fields(
             self.data, 'UPDATE_USER_PHARMACY')
-
         if validation_error:
             return validation_error, 400
         if not entity_instance:
             return {'error': 'User does not exist'}, 400
-
         if shop_name:
             data['shop_name'] = shop_name
         if cerification:
@@ -396,18 +367,16 @@ class EditUserInfoAPI(tools.Request):
             data['address'] = address
         if account_status and isinstance(account_status, str):
             data['account_status'] = account_status
-
         for field, value in data.items():
             setattr(entity_instance, field, value)
         db.session.commit()
         return {'message': "User successfully updated."}, 200
 
     def get_entity_instance(self):
-        import pdb; pdb.set_trace()
         try:
             user_map_instance = models.UserMapping.query.filter_by(
                 user_id=self.get_user_instance,
-                entity_type=self.user_type).first()
+                entity_type=self.type).first()
             entity_instance = getattr(models, self.user_type).query.filter_by(
                 id=user_map_instance.entity_id).first()
         except Exception:
