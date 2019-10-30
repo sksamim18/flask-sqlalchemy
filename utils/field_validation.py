@@ -58,7 +58,7 @@ validation['UPDATE_MEDICINE'] = {
 validation['PATIENT_INFO'] = {
     'patient_name': str,
     'phone_number': str,
-    'dob': int,
+    'dob': str,
     'patient_gender': str,
     'timestamp': str
 }

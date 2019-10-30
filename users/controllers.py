@@ -1,6 +1,5 @@
-import random
-import hashlib
 import uuid
+import hashlib
 from users import models
 from utils import constants
 from utils import field_validation
@@ -41,10 +40,13 @@ class RegisterAPI(tools.Request):
         db.session.add(patient_instance)
         db.session.commit()
         try:
+            password = hashlib.sha256(self.data.get(
+                'password').encode('utf-8')).hexdigest()
             user_mapping_instance = models.UserMapping(
                 user_id=user_instance.id,
                 entity_id=patient_instance.id,
-                entity_type=self.type)
+                entity_type=self.type,
+                password=password)
             db.session.add(user_mapping_instance)
             db.session.commit()
         except (IntegrityError):
@@ -67,10 +69,13 @@ class RegisterAPI(tools.Request):
         db.session.add(pharmacist_instance)
         db.session.commit()
         try:
+            password = hashlib.sha256(self.data.get(
+                'password').encode('utf-8')).hexdigest()
             user_mapping_instance = models.UserMapping(
                 user_id=user_instance.id,
                 entity_id=pharmacist_instance.id,
-                entity_type=self.type)
+                entity_type=self.type,
+                password=password)
             db.session.add(user_mapping_instance)
             db.session.commit()
         except (IntegrityError, ):
@@ -93,10 +98,13 @@ class RegisterAPI(tools.Request):
         db.session.add(doctor_instance)
         db.session.commit()
         try:
+            password = hashlib.sha256(self.data.get(
+                'password').encode('utf-8')).hexdigest()
             user_mapping_instance = models.UserMapping(
                 user_id=user_instance.id,
                 entity_id=doctor_instance.id,
-                entity_type=self.type)
+                entity_type=self.type,
+                password=password)
             db.session.add(user_mapping_instance)
             db.session.commit()
         except (IntegrityError, ):
@@ -115,8 +123,6 @@ class RegisterAPI(tools.Request):
             return user_instance
         data.update(self.get_full_name())
         data['username'] = phone_number
-        data['password'] = hashlib.sha256(self.data.get(
-            'password').encode('utf-8')).hexdigest()
         user_instance = models.User(**data)
         db.session.add(user_instance)
         db.session.commit()
@@ -124,7 +130,7 @@ class RegisterAPI(tools.Request):
 
     def get_full_name(self):
         data = {}
-        full_name = self.data.get('full_name').split(' ')
+        full_name = self.data.get('full_name', '').split(' ')
         if len(full_name) >= 1:
             data['first_name'] = full_name[0]
         if len(full_name) == 3:
@@ -173,7 +179,7 @@ class LoginAPI(tools.Request):
                 return {'error': 'User not found'}, 400
         except:
             return {'error': 'User not found'}, 400
-        if password != user_instance.password:
+        if password != user_mapping_instance.password:
             return constants.LOGIN_ERROR, 400
         user_info = self.serilize(user_instance)
         entity_instance = self.get_entity_instance(
@@ -234,25 +240,17 @@ class EditUserAPI(tools.Request):
         username = self.data.get('phone_number')
         if not username:
             return {'error': 'Please pass phone number'}, 400
-        user_instance = models.User.query.filter_by(username=username).first()
+        user_instance = models.User.query.filter_by(
+            username=username).first()
         full_name = self.get_full_name()
         for field, value in full_name.items():
             setattr(user_instance, field, value)
-        password = self.data.get('password')
-        if password:
-            hashed_password = hashlib.sha256(
-                password.encode('utf-8')).hexdigest()
-            setattr(user_instance, 'password', hashed_password)
         db.session.commit()
         return {'message': 'User updated'}, 200
 
     def get_full_name(self):
         data = {}
-        full_name = self.data.get('full_name')
-        if not full_name:
-            return {}
-        else:
-            full_name = full_name.split(' ')
+        full_name = self.data.get('full_name', '').split(' ')
         if len(full_name) >= 1:
             data['first_name'] = full_name[0]
         if len(full_name) == 3:

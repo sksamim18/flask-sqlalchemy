@@ -13,7 +13,6 @@ class User(db.Model):
     first_name = db.Column(db.String(32))
     middle_name = db.Column(db.String(32))
     last_name = db.Column(db.String(32))
-    password = db.Column(db.String, nullable=False)
 
     @property
     def phone_number(self):
@@ -39,6 +38,7 @@ class UserMapping(db.Model):
 
     __tablename__ = 'user_mappings'
     id = db.Column(db.Integer, primary_key=True)
+    password = db.Column(db.String)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     user = db.relationship('User', foreign_keys=[user_id])
     entity_type = db.Column(db.String(255))

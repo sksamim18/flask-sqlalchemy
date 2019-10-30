@@ -99,10 +99,7 @@ class UpdateMedicine(tools.Request):
             self.data, 'UPDATE_MEDICINE')
         if validation_error:
             return validation_error, 400
-        token = self.headers.get('Authorization')
-        user_id = models.AuthToken.query.filter(
-            token=token,
-            user_type='Pharmacy').first().user_id
+        user_id = self.get_user_instance
         data = {}
         data['user_id'] = user_id
         data['medicine_id'] = self.data.get('medicine_id')
