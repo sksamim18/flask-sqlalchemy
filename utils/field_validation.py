@@ -59,14 +59,13 @@ validation['PATIENT_INFO'] = {
     'patient_name': str,
     'phone_number': str,
     'dob': str,
-    'patient_gender': str,
-    'timestamp': str
+    'patient_gender': str
 }
 validation['TREATMENT'] = {
-    'treatment': str
+    'medication': str
 }
 validation['DIAGNOSIS'] = {
-    'diagnosis': str
+    'cause': str
 }
 
 

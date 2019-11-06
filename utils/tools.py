@@ -11,7 +11,8 @@ class Request:
         self.args = request.args
         self.headers = request.headers
         self.method = request.method
-        self.data = json.loads(request.get_data().decode('utf-8'))
+        if self.method == 'POST':
+            self.data = json.loads(request.get_data().decode('utf-8'))
 
     @property
     def get_user_instance(self):

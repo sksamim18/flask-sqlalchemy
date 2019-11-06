@@ -22,11 +22,11 @@ class User(db.Model):
     def full_name(self):
         full_name = str()
         if self.first_name:
-            full_name += user_instance.first_name
+            full_name += self.first_name + ' '
         if self.middle_name:
-            full_name += user_instance.middle_name
+            full_name += self.middle_name + ' '
         if self.last_name:
-            full_name += user_instance.last_name
+            full_name += self.last_name
         return full_name
 
     def __str__(self):

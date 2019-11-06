@@ -51,10 +51,10 @@ def edit_user_info():
     return jsonify(response), status
 
 
-@app.route('/get-patient-info', methods=['POST'])
+@app.route('/get-past-records', methods=['GET'])
 @tools.login_required_doctor
 def get_patient_list():
-    response, status = GetPatientList(request)()
+    response, status = GetPastRecords(request)()
     return jsonify(response), status
 
 
@@ -62,13 +62,6 @@ def get_patient_list():
 @tools.login_required_pharmacist
 def get_all_medicine():
     response, status = GetAllMedicine(request)()
-    return jsonify(response), status
-
-
-@app.route('/update-medicine', methods=['POST'])
-@tools.login_required_pharmacist
-def update_medicine():
-    response, status = UpdateMedicine(request)()
     return jsonify(response), status
 
 
@@ -88,8 +81,8 @@ def search_medicine():
 
 @app.route('/add-medicine', methods=['POST'])
 @tools.login_required_pharmacist
-def add_medcine():
-    response, status = AddMedcine(request)()
+def add_medicine():
+    response, status = AddMedicine(request)()
     return jsonify(response), status
 
 
@@ -100,14 +93,14 @@ def view_prescription():
     return jsonify(response), status
 
 
-@app.route('/write-prescription')
+@app.route('/write-prescription', methods=['POST'])
 @tools.login_required_doctor
 def write_prescription():
     response, status = WritePrescription(request)()
     return jsonify(response), status
 
 
-@app.route('/get_patient_info', methods=['POST'])
+@app.route('/get_patient_info', methods=['GET'])
 @tools.login_required
 def get_patient_info():
     response, status = GetPatientInfo(request)()
