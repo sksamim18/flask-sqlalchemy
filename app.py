@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request, render_template
 from flask_sqlalchemy import SQLAlchemy
+from flask_cors import CORS, cross_origin
 
 
 BASE_DIR = os.path.join(os.path.abspath('.'), '.env')
@@ -11,6 +12,8 @@ load_dotenv(BASE_DIR)
 app = Flask(__name__)
 app.config.from_object(os.environ.get('APP_SETTINGS'))
 app.config['SQLALCHEMY_TRACK_MODIFICATION'] = False
+app.config['CORS_HEADERS'] = 'Content-Type'
+CORS(app)
 db = SQLAlchemy(app)
 
 from users.models import *
@@ -26,6 +29,7 @@ def hello():
 
 
 @app.route('/register', methods=['POST'])
+@cross_origin(origin='localhost:3000')
 def register():
     response, status = RegisterAPI(request)()
     return jsonify(response), status

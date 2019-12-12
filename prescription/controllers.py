@@ -26,8 +26,8 @@ class GetPastRecords(tools.Request):
         patient_dict = {}
         diagnosis_dict = defaultdict(list)
         doctor_id = self.args.get('doctor_id')
-        prescription_instances = prescription_model.Prescription.query.filter_by(
-            doctor_id=doctor_id)
+        query_instance = prescription_model.Prescription.query
+        prescription_instances = query_instance.filter_by(doctor_id=doctor_id)
         for prescription in prescription_instances:
             prescription_ids.append(prescription.id)
             patient_ids.append(prescription.patient_id)
@@ -86,10 +86,10 @@ class RemoveMedicine(tools.Request):
     def remove_medicine(self):
         sold_unit = self.data.get('sold_unit')
         medicine_id = self.data.get('medicine_id')
-
         medicine_instance = prescription_model.Medicine.query.filter_by(
             id=medicine_id).first()
-        available_medicine_instance = prescription_model.AvailableMedicine.query.filter_by(
+        query_instance = prescription_model.AvailableMedicine.query
+        available_medicine_instance = query_instance.query.filter_by(
             pharmacist_id=self.get_user_instance,
             medicine_id=medicine_instance.id).first()
         left_out_medicine = available_medicine_instance.in_stock - sold_unit
@@ -111,7 +111,8 @@ class SearchMedicine(tools.Request):
     def search_medicine(self):
         data, medicine_ids = [], []
         query = self.args.get('q')
-        available_instances = prescription_model.AvailableMedicine.query.filter_by(
+        query_instance = prescription_model.AvailableMedicine.query
+        available_instances = query_instance.filter_by(
             pharmacist_id=self.get_user_instance)
         medicine_ids = [medicine.id for medicine in available_instances]
         medicine_instances = prescription_model.Medicine.query.filter(
@@ -292,7 +293,7 @@ class WritePrescription(tools.Request):
             db.session.add(user_mapping_instance)
             db.session.commit()
             self.patient_instance = user_instance
-        except:
+        except (IntegrityError, ):
             db.session.rollback()
             db.session.delete(patient_instance)
             db.session.commit()
